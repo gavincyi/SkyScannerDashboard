@@ -1,4 +1,6 @@
+import sys
 from skyscanner.skyscanner import Flights
+from datetime import datetime, timedelta
 import configparser
 import json
 
@@ -108,14 +110,18 @@ class FlightItinerary():
         :param msg - Message of an itinerary
         """
         self.OutboundLegId = msg['OutboundLegId']
-        self.InboundLegId = msg['OutboundLegId']
+        self.InboundLegId = msg['InboundLegId']
         self.PricingOptions = [FlightItinerary.FlightPricingOption(p) for p in msg['PricingOptions']]
                  
     def get_lowest_price(self):
+        """
+        :return The lowest price among the pricing option
+        """
         return min([p.Price for p in self.PricingOptions])
+
         
 class FlightQuery(Flights):
-    class FlightQueryResult():
+    class FlightQueryResult:
         """
         Flight query result
         """
@@ -158,19 +164,47 @@ class FlightQuery(Flights):
             """            
             return self.Legs[leg_id]
         
-        def get_lowest_price(self, number):
+        def get_lowest_price(self, n_itinerary=1, n_agent=1):
             """
-            :param number - The number of lowest price itineraries
+            :param n_itinerary - The number of lowest price itineraries
+            :param n_agent - The number of agents
             :return The first n-th lowest price itineraries
             """
             lowest = []
             for itinerary in self.Itineraries:
                 lowest.append(itinerary)
-                if len(lowest) > number:
+                if len(lowest) > n_itinerary:
                     lowest.sort(key=lambda x: x.get_lowest_price())
                     del lowest[-1]
-            
-            return lowest                    
+
+            for l in lowest:
+                l.PricingOptions = l.PricingOptions[0:n_agent]
+
+            return [self.to_dict(l) for l in lowest]
+
+        def to_dict(self, itinerary):
+            """
+            :param itinerary: Flight itinerary
+            :return Converted to a readable dictionary
+            """
+            ret = dict()
+            outbound = dict(self.Legs[itinerary.OutboundLegId].__dict__)
+            inbound = dict(self.Legs[itinerary.InboundLegId].__dict__)
+            outbound['Carriers'] = [self.Carriers[e].Name for e in outbound['Carriers']]
+            inbound['Carriers'] = [self.Carriers[e].Name for e in inbound['Carriers']]
+            ret['OutboundLeg'] = outbound
+            ret['InboundLeg'] = inbound
+            ret['Price'] = itinerary.get_lowest_price()
+
+            return ret
+
+        @staticmethod
+        def to_json(itinerary):
+            """
+            :param itinerary: Readable itinerary
+            :return: The itinerary in json format
+            """
+            return json.dumps(itinerary, default=lambda o: o.__dict__, indent=4)
 
     def __init__(self, config_path):
         """
@@ -192,7 +226,7 @@ class FlightQuery(Flights):
                                       market=self.market,
                                       currency=self.currency,
                                       locale=self.locale).parsed
-		
+
         return ret['Places'][0]['PlaceId']
 
     def Query(self, dept_place, dest_place, outbounddate, inbounddate):
@@ -209,14 +243,12 @@ class FlightQuery(Flights):
         legs = {}
         agents = {}
         carriers = {}
-        dept = self.top_autosuggest(dept_place)
-        dest = self.top_autosuggest(dest_place)
         ret = self.get_result(
                 country=self.market,
                 currency=self.currency,
                 locale=self.locale,
-                originplace=dept,
-                destinationplace=dest,
+                originplace=dept_place,
+                destinationplace=dest_place,
                 outbounddate=outbounddate,
                 inbounddate=inbounddate,
                 adults=self.adults).parsed
@@ -226,17 +258,28 @@ class FlightQuery(Flights):
                                                   
 
 if __name__ == '__main__':
-    flight = FlightQuery('config.ini')
-    
-    result = flight.Query(dept_place='Hong Kong', 
-                          dest_place='Copenhagen',
-                          outbounddate='2017-01-20',
-                          inbounddate='2017-01-25')
+    if len(sys.argv) != 2:
+        print("Usage: python query.py <config file name>")
+        sys.exit(1)
 
-    lowest = result.get_lowest_price(3)
-    
+    config_file_path = sys.argv[1]
+    flight = FlightQuery(config_file_path)
+    start_date = datetime(2017, 1, 14)
+    interval = 7
+    lowest = []
+    dept = flight.top_autosuggest('Hong Kong')
+    dest = flight.top_autosuggest('Copenhagen')
+    for i in range(0, 4):
+        start = start_date + timedelta(days=i)
+        end = start_date + timedelta(days=i+interval)
+        result = flight.Query(dept_place=dept,
+                              dest_place=dest,
+                              outbounddate=start.strftime("%Y-%m-%d"),
+                              inbounddate=end.strftime("%Y-%m-%d"))
+        lowest += result.get_lowest_price()
+
+    lowest.sort(key=lambda x: x['Price'])
+
     for l in lowest:
         print("================================")
-        print("OutboundLegId = %s" % l.OutboundLegId)
-        print("InboundLegId = %s" % l.InboundLegId)
-        print("Price = %.2f" % l.get_lowest_price())
+        print(FlightQuery.FlightQueryResult.to_json(l))
