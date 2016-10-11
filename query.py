@@ -165,8 +165,9 @@ class FlightQuery(Flights):
                 self.GroupPricing = query['GroupPricing']
             except TypeError as nt:
                 print_log(self.__class__.__name__, 
-                          self.__init__.__name,
+                          self.__init__.__name__,
                           "%s\n%s" % (nt, ret))
+                raise nt
             
             for leg in ret['Legs']:
                 self.Legs[leg['Id']] = FlightItinerary.FlightItineraryLeg(leg)
@@ -297,8 +298,8 @@ if __name__ == '__main__':
     lowest = []
     dept = flight.top_autosuggest('Hong Kong')
     dest = flight.top_autosuggest('Copenhagen')
-    total = 30
-    prev_progress = 0
+    total = 90
+    prev_progress = 0.0
     for i in range(0, total):
         start = start_date + timedelta(days=i)
         end = start_date + timedelta(days=i+interval)
@@ -308,11 +309,11 @@ if __name__ == '__main__':
                               inbounddate=end.strftime("%Y-%m-%d"))
         lowest += result.get_lowest_price()
         
-        if 100.0*i/total > prev_progress:
+        if 1.0*i/total > prev_progress:
             print_log('[Default]',
                       'main',
-                      "Progress : %d\%" % prev_progress)
-            prev_progress += 10
+                      "Progress {0:.0f}%".format(prev_progress))
+            prev_progress += 0.1
 
     lowest.sort(key=lambda x: x['Price'])
 
