@@ -1,9 +1,14 @@
 import sys
-from skyscanner.skyscanner import Flights
+from skyscanner.skyscanner import Flights, EmptyResponse
 from datetime import datetime, timedelta
 import configparser
 import json
 
+def print_log(class_name, method_name, log_msg):
+    print("%s - [%s::%s] - %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                                  class_name,
+                                  method_name, 
+                                  log_msg))
 
 class config(configparser.ConfigParser):
     """
@@ -46,6 +51,18 @@ class config(configparser.ConfigParser):
         Adults getter 
         """                 
         return int(self['DEFAULT']['ADULTS'])
+        
+    def get_query_init_delay_sec(self):
+        """
+        Query initial delay time in seconds
+        """                 
+        return int(self['DEFAULT']['QUERY_INIT_DELAY_SEC'])       
+        
+    def get_query_delay_sec(self):
+        """
+        Query delay time in seconds
+        """                 
+        return int(self['DEFAULT']['QUERY_DELAY_SEC'])         
 
 class FlightItinerary():
     """
@@ -134,17 +151,22 @@ class FlightQuery(Flights):
             self.Agents = {}
             self.Carriers = {} 
 
-            query = ret['Query']
-            self.InboundDate = query['InboundDate']
-            self.DestinationPlace = query['DestinationPlace']
-            self.CabinClass = query['CabinClass']
-            self.Adults = query['Adults']
-            self.Locale = query['Locale']
-            self.Country = query['Country']
-            self.OutboundDate = query['OutboundDate']
-            self.Currency = query['Currency']
-            self.OriginPlace = query['OriginPlace']
-            self.GroupPricing = query['GroupPricing']
+            try:
+                query = ret['Query']
+                self.InboundDate = query['InboundDate']
+                self.DestinationPlace = query['DestinationPlace']
+                self.CabinClass = query['CabinClass']
+                self.Adults = query['Adults']
+                self.Locale = query['Locale']
+                self.Country = query['Country']
+                self.OutboundDate = query['OutboundDate']
+                self.Currency = query['Currency']
+                self.OriginPlace = query['OriginPlace']
+                self.GroupPricing = query['GroupPricing']
+            except TypeError as nt:
+                print_log(self.__class__.__name__, 
+                          self.__init__.__name,
+                          "%s\n%s" % (nt, ret))
             
             for leg in ret['Legs']:
                 self.Legs[leg['Id']] = FlightItinerary.FlightItineraryLeg(leg)
@@ -215,6 +237,8 @@ class FlightQuery(Flights):
         self.currency = self.conf.get_currency()
         self.locale = self.conf.get_locale()
         self.adults = self.conf.get_adults()
+        self.query_init_delay_sec = self.conf.get_query_init_delay_sec()
+        self.query_delay_sec = self.conf.get_query_delay_sec()
         Flights.__init__(self, self.conf.get_api_key())
         
     def top_autosuggest(self, keyword):
@@ -243,6 +267,7 @@ class FlightQuery(Flights):
         legs = {}
         agents = {}
         carriers = {}
+        
         ret = self.get_result(
                 country=self.market,
                 currency=self.currency,
@@ -251,9 +276,12 @@ class FlightQuery(Flights):
                 destinationplace=dest_place,
                 outbounddate=outbounddate,
                 inbounddate=inbounddate,
-                adults=self.adults).parsed
-                       
-        query_result = FlightQuery.FlightQueryResult(ret)                       
+                adults=self.adults,
+                initial_delay=self.query_init_delay_sec,
+                delay=self.query_delay_sec).parsed
+                   
+        query_result = FlightQuery.FlightQueryResult(ret)    
+            
         return query_result
                                                   
 
@@ -264,12 +292,14 @@ if __name__ == '__main__':
 
     config_file_path = sys.argv[1]
     flight = FlightQuery(config_file_path)
-    start_date = datetime(2017, 1, 14)
+    start_date = datetime(2017, 1, 1)
     interval = 7
     lowest = []
     dept = flight.top_autosuggest('Hong Kong')
     dest = flight.top_autosuggest('Copenhagen')
-    for i in range(0, 4):
+    total = 30
+    prev_progress = 0
+    for i in range(0, total):
         start = start_date + timedelta(days=i)
         end = start_date + timedelta(days=i+interval)
         result = flight.Query(dept_place=dept,
@@ -277,6 +307,12 @@ if __name__ == '__main__':
                               outbounddate=start.strftime("%Y-%m-%d"),
                               inbounddate=end.strftime("%Y-%m-%d"))
         lowest += result.get_lowest_price()
+        
+        if 100.0*i/total > prev_progress:
+            print_log('[Default]',
+                      'main',
+                      "Progress : %d\%" % prev_progress)
+            prev_progress += 10
 
     lowest.sort(key=lambda x: x['Price'])
 
