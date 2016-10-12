@@ -298,7 +298,7 @@ if __name__ == '__main__':
     lowest = []
     dept = flight.top_autosuggest('Hong Kong')
     dest = flight.top_autosuggest('Copenhagen')
-    total = 90
+    total = 1
     prev_progress = 0.0
     for i in range(0, total):
         start = start_date + timedelta(days=i)

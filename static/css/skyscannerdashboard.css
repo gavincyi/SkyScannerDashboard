@@ -1,0 +1,36 @@
+#skyscannerdashboard .header {
+    background-color: #458bbe;
+    width: 100%;
+}
+
+#skyscannerdashboard .header .logo {
+    text-align: left;
+}
+
+#skyscannerdashboard .header .logo small {
+    font-size: 12px;
+}
+
+#skyscannerdashboard .header .logo span.app-name {
+    font-size: 20px;
+    line-height: 64px;
+    font-weight: 300;
+    color: #FFFFFF;
+}
+
+#skyscannerdashboard .main-content {
+    width: 100%;
+}
+
+#dashmain .table-container {
+    display: table;
+    height: 100%;
+    margin: 0 auto;
+}
+
+#dashmain table th {
+    padding: 13px 6px;
+    font-size: 16px;
+    font-weight: 300;
+    margin-right: 10px;
+}
