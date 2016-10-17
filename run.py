@@ -1,24 +1,45 @@
-import os, sys, query
-from flask import Flask, Blueprint, render_template
+import os, sys
+from flask import Flask, Blueprint, render_template, request
 from datetime import datetime, timedelta
+from query import FlightQuery, print_log
 
 app = Flask(__name__)
 webapp = Blueprint(__name__, __name__, static_folder='static')
 config_file_path = sys.argv[1]
-flight = query.FlightQuery(config_file_path)
+flight = FlightQuery(config_file_path)
 
-@webapp.route('/')
+@webapp.route('/', methods=['GET', 'POST'])
 def index():
-    dept = flight.top_autosuggest('Hong Kong')
-    dest = flight.top_autosuggest('Copenhagen')
-    start_date = datetime(2017, 1, 1)
-    interval = 7
-    result = flight.Query(dept_place=dept,
-                                  dest_place=dest,
-                                  outbounddate=start_date.strftime("%Y-%m-%d"),
-                                  inbounddate=(start_date + timedelta(days=interval)).strftime("%Y-%m-%d"))
-    result = { 'result': result.get_lowest_price() }
-    return render_template("index.html", **result)
+    results = {}
+    if request.method == "POST":
+        try:
+            dept = request.form['dept-city']
+            dest = request.form['dest-city']
+            dept_date = request.form['dept-date']
+            dest_date = request.form['dest-date']
+            interval = (int)(request.form['interval'])
+            dept = flight.top_autosuggest(dept)
+            dest = flight.top_autosuggest(dest)
+            start_date = datetime.strptime(dept_date, "%Y-%m-%d")
+            end_date = datetime.strptime(dest_date, "%Y-%m-%d")
+            date_diff = (end_date - start_date).days - interval + 1
+            
+            result = []
+            for i in range(0, date_diff):
+                from_date = start_date + timedelta(days=i)
+                to_date = start_date + timedelta(days=i+date_diff)
+                result += flight.Query(dept_place=dept,
+                                      dest_place=dest,
+                                      outbounddate=from_date.strftime("%Y-%m-%d"),
+                                      inbounddate=to_date.strftime("%Y-%m-%d")).get_lowest_price()
+            print_log("Webapp", "index", request.form)                                      
+            print_log("Webapp", "index", date_diff)   
+            print_log("Webapp", "index", result)                                      
+            results = { 'result': result }
+        except Exception as ex:
+            print_log("Webapp", "index", request.form)
+            print_log("Webapp", "index", ex)
+    return render_template("index.html", **results)
 
 
 def main():

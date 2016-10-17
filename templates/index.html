@@ -1,31 +1,70 @@
 {% extends "default.html" %}
 {% block content %}
     <div id="dashmain">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Price</th>
-                        <th>OutDept</th>
-                        <th>OutArrival</th>
-                        <th>OutCarrier</th>
-                        <th>InDept</th>
-                        <th>InArrival</th>                        
-                        <th>InCarrier</th>
-                    </tr>
-                </thead>
-                {% for r in result %}
-                    <tr>
-                        <td>{{ r.Price }}</td>
-                        <td>{{ r.OutboundLeg.Departure }}</td>
-                        <td>{{ r.OutboundLeg.Arrival }}</td>
-                        <td>{{ r.OutboundLeg.Carriers[0] }}</td>
-                        <td>{{ r.InboundLeg.Departure }}</td>
-                        <td>{{ r.InboundLeg.Arrival }}</td>                        
-                        <td>{{ r.InboundLeg.Carriers[0] }}</td>
-                    </tr>
-                {% endfor %}                
-            </table>
+        <div class="jumbotron">
+            <div class="container">
+                <form role="form" action='/' method='POST'>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div><h3>Departure</h3></div>
+                        </div>
+                        <div class="col-md-4">
+                            <div><h3>Destination</h3></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="dept-city" placeholder="Hong Kong">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="dest-city" placeholder="London">
+                        </div>      
+                        <div class="col-md-4">
+                            <div class="form-inline">
+                                <label>Days:</label>
+                                <input type="text" class="form-control" name="interval" placeholder="7">
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                            </div>
+                        </div>                   
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="dept-date" placeholder="2018-12-20">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="dest-date" placeholder="2018-12-27">
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="jumbotron">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Price</th>
+                            <th>OutDept</th>
+                            <th>OutArrival</th>
+                            <th>OutCarrier</th>
+                            <th>InDept</th>
+                            <th>InArrival</th>                        
+                            <th>InCarrier</th>
+                        </tr>
+                    </thead>
+                    {% for r in result %}
+                        <tr>
+                            <td>{{ r.Price }}</td>
+                            <td>{{ r.OutboundLeg.Departure }}</td>
+                            <td>{{ r.OutboundLeg.Arrival }}</td>
+                            <td>{{ r.OutboundLeg.Carriers[0] }}</td>
+                            <td>{{ r.InboundLeg.Departure }}</td>
+                            <td>{{ r.InboundLeg.Arrival }}</td>                        
+                            <td>{{ r.InboundLeg.Carriers[0] }}</td>
+                        </tr>
+                    {% endfor %}                
+                </table>
+            </div>
         </div>
     </div>
 {% endblock %}

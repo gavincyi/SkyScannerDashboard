@@ -28,9 +28,22 @@
     margin: 0 auto;
 }
 
+#dashmain .fixed-bar {
+    display: block;
+    margin: 1em auto 1em auto;
+    width: 100%;
+    background-color: #E0F2F7;
+}
+
 #dashmain table th {
     padding: 13px 6px;
     font-size: 16px;
     font-weight: 300;
     margin-right: 10px;
+}
+
+.vcenter {
+    display: inline-block;
+    vertical-align: middle;
+    float: none;
 }
