@@ -1,5 +1,5 @@
 import sys
-from skyscanner.skyscanner import Flights, EmptyResponse
+from skyscanner.skyscanner import Flights, FlightsCache, EmptyResponse
 from datetime import datetime, timedelta
 import configparser
 import json
@@ -264,11 +264,6 @@ class FlightQuery(Flights):
         :param inbounddate - Inbound date
         :return All the itineraries
         """
-        itineraries = []
-        legs = {}
-        agents = {}
-        carriers = {}
-        
         ret = self.get_result(
                 country=self.market,
                 currency=self.currency,
@@ -284,7 +279,73 @@ class FlightQuery(Flights):
         query_result = FlightQuery.FlightQueryResult(ret)    
             
         return query_result
-                                                  
+
+
+class FlightCacheQuery(FlightsCache):
+    class Types:
+        CHEAPEST_QUOTES = 0,
+        CHEAPEST_PRICE_BY_ROUTE = 1,
+        CHEAPEST_PRICE_BY_DATE = 2,
+        GRID_PRICES_BY_DATE = 3
+
+    def __init__(self, config_path):
+        """
+        Constructor
+        :param config_path: Configuration file path
+        """
+        self.conf = config(config_path)
+        self.market = self.conf.get_market()
+        self.currency = self.conf.get_currency()
+        self.locale = self.conf.get_locale()
+        self.query_init_delay_sec = self.conf.get_query_init_delay_sec()
+        self.query_delay_sec = self.conf.get_query_delay_sec()
+        FlightsCache.__init__(self, self.conf.get_api_key())
+
+    def top_autosuggest(self, keyword):
+        """
+        Get the top auto suggestion on location
+        :param keyword - Keyword to search for location auto suggestion
+        """
+        ret = self.location_autosuggest(query=keyword,
+                                        market=self.market,
+                                        currency=self.currency,
+                                        locale=self.locale).parsed
+
+    def Query(self, dept_place, dest_place, outbounddate, inbounddate, type=Types.CHEAPEST_QUOTES):
+        """
+        Query all the flight prices based on human readable departure and
+        destination places.
+        :param dept_place - Departure location
+        :param dest_place - Destination location
+        :param outbounddate - Outbound date
+        :param inbounddate - Inbound date
+        :return All the itineraries
+        """
+        if type == FlightCacheQuery.Types.GRID_PRICES_BY_DATE:
+            ret = self.get_grid_prices_by_date(market=self.market,
+                                               currency=self.currency,
+                                               locale=self.locale,
+                                               originplace=dept_place,
+                                               destinationplace=dest_place,
+                                               outbounddate=outbounddate,
+                                               inbounddate=inbounddate)
+        elif type == FlightCacheQuery.Types.CHEAPEST_PRICE_BY_DATE:
+            ret = self.get_cheapest_price_by_date(market=self.market,
+                                                  currency=self.currency,
+                                                  locale=self.locale,
+                                                  originplace=dept_place,
+                                                  destinationplace=dest_place,
+                                                  outbounddate=outbounddate,
+                                                  inbounddate=inbounddate)
+        elif type == FlightCacheQuery.Types.CHEAPEST_QUOTES:
+            ret = self.get_cheapest_quotes(market=self.market,
+                                           currency=self.currency,
+                                           locale=self.locale,
+                                           originplace=dept_place,
+                                           destinationplace=dest_place,
+                                           outbounddate=outbounddate,
+                                           inbounddate=inbounddate)
+        print(json.dumps(ret.parsed, indent=4))
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -293,6 +354,7 @@ if __name__ == '__main__':
 
     config_file_path = sys.argv[1]
     flight = FlightQuery(config_file_path)
+    flightCache = FlightCacheQuery(config_file_path)
     start_date = datetime(2017, 1, 1)
     interval = 7
     lowest = []
@@ -303,11 +365,13 @@ if __name__ == '__main__':
     for i in range(0, total):
         start = start_date + timedelta(days=i)
         end = start_date + timedelta(days=i+interval)
-        result = flight.Query(dept_place=dept,
+        result = flightCache.Query(dept_place=dept,
                               dest_place=dest,
-                              outbounddate=start.strftime("%Y-%m-%d"),
-                              inbounddate=end.strftime("%Y-%m-%d"))
-        lowest += result.get_lowest_price()
+                              outbounddate='2017-01',
+                              inbounddate='2017-02')
+                              # outbounddate=start.strftime("%Y-%m-%d"),
+                              # inbounddate=end.strftime("%Y-%m-%d"))
+        # lowest += result.get_lowest_price()
         
         if 1.0*i/total > prev_progress:
             print_log('[Default]',
@@ -315,8 +379,8 @@ if __name__ == '__main__':
                       "Progress {0:.0f}%".format(prev_progress))
             prev_progress += 0.1
 
-    lowest.sort(key=lambda x: x['Price'])
-
-    for l in lowest:
-        print("================================")
-        print(FlightQuery.FlightQueryResult.to_json(l))
+    # lowest.sort(key=lambda x: x['Price'])
+    #
+    # for l in lowest:
+    #     print("================================")
+    #  print(FlightQuery.FlightQueryResult.to_json(l))

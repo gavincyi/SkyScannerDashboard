@@ -8,8 +8,13 @@ webapp = Blueprint(__name__, __name__, static_folder='static')
 config_file_path = sys.argv[1]
 flight = FlightQuery(config_file_path)
 
+
 @webapp.route('/', methods=['GET', 'POST'])
 def index():
+    """
+    Index page callback
+    :return: Index page
+    """
     results = {}
     if request.method == "POST":
         try:
@@ -27,7 +32,7 @@ def index():
             result = []
             for i in range(0, date_diff):
                 from_date = start_date + timedelta(days=i)
-                to_date = start_date + timedelta(days=i+date_diff)
+                to_date = start_date + timedelta(days=i+interval)
                 result += flight.Query(dept_place=dept,
                                       dest_place=dest,
                                       outbounddate=from_date.strftime("%Y-%m-%d"),
