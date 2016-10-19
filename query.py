@@ -62,29 +62,73 @@ class config(configparser.ConfigParser):
         """
         Query delay time in seconds
         """                 
-        return int(self['DEFAULT']['QUERY_DELAY_SEC'])         
+        return int(self['DEFAULT']['QUERY_DELAY_SEC'])
 
-class FlightItinerary():
+
+class FlightAgent:
+    """
+    Agent
+    """
+    def __init__(self, agent_msg):
+        """
+        :param agent_msg - Message of an agent
+        """
+        self.Id = agent_msg['Id']
+        self.Name = agent_msg['Name']
+        self.OptimisedForMobile = agent_msg['OptimisedForMobile']
+        self.Type = agent_msg['Type']
+
+
+class FlightCarrier:
+    """
+    Carrier
+    """
+    def __init__(self, carrier_msg):
+        """
+        :param carrier_msg - Message of a carrier
+        """
+        self.Id = carrier_msg['Id']
+        self.DisplayCode = carrier_msg['DisplayCode']
+        self.Code = carrier_msg['Code']
+        self.Name = carrier_msg['Name']
+
+
+class FlightPlace:
+    """
+    Place
+    """
+    def __init__(self, place_msg):
+        """
+        :param place_msg: Message of a place
+        """
+        self.Id = place_msg['Id']
+        self.Type = place_msg['Type']
+        self.Code = place_msg['Code']
+        self.Name = place_msg['Name']
+
+
+class FlightItineraryLeg:
+    """
+    Itinerary leg
+    """
+    def __init__(self, leg_msg):
+        """
+        :param leg_msg - Message of an itinerary leg
+        """
+        self.Id = leg_msg['Id']
+        self.OriginStation = leg_msg['OriginStation']
+        self.DestinationStation = leg_msg['DestinationStation']
+        self.Departure = leg_msg['Departure']
+        self.Arrival = leg_msg['Arrival']
+        self.Carriers = leg_msg['Carriers']
+        self.Directionality = leg_msg['Directionality']
+
+
+class FlightItinerary:
     """
     Flight itinerary. 
     """
-    class FlightItineraryLeg():
-        """
-        Itinerary leg
-        """
-        def __init__(self, leg_msg):
-            """
-            :param leg_msg - Message of an itinerary leg
-            """        
-            self.Id = leg_msg['Id']
-            self.OriginStation = leg_msg['OriginStation']
-            self.DestinationStation = leg_msg['DestinationStation']
-            self.Departure = leg_msg['Departure']
-            self.Arrival = leg_msg['Arrival']
-            self.Carriers = leg_msg['Carriers']
-            self.Directionality = leg_msg['Directionality']                        
-    
-    class FlightPricingOption():
+    class FlightPricingOption:
         """
         Pricing option
         """
@@ -96,32 +140,6 @@ class FlightItinerary():
             self.Agents = price_msg['Agents']
             self.QuoteAgeInMinutes = price_msg['QuoteAgeInMinutes']
 
-    class FlightAgent():
-        """
-        Agent
-        """
-        def __init__(self, agent_msg):
-            """
-            :param agent_msg - Message of an agent
-            """
-            self.Id = agent_msg['Id']
-            self.Name = agent_msg['Name']
-            self.OptimisedForMobile = agent_msg['OptimisedForMobile']
-            self.Type = agent_msg['Type'] 
-    
-    class FlightCarrier():
-        """
-        Carrier
-        """
-        def __init__(self, carrier_msg):
-            """
-            :param carrier_msg - Message of a carrier
-            """
-            self.Id = carrier_msg['Id']
-            self.DisplayCode = carrier_msg['DisplayCode']
-            self.Code = carrier_msg['Code']
-            self.Name = carrier_msg['Name']
-            
     def __init__(self, msg):
         """
         :param msg - Message of an itinerary
@@ -134,7 +152,7 @@ class FlightItinerary():
         """
         :return The lowest price among the pricing option
         """
-        return min([p.Price for p in self.PricingOptions])
+        return min([int(p.Price) for p in self.PricingOptions])
 
         
 class FlightQuery(Flights):
@@ -149,7 +167,8 @@ class FlightQuery(Flights):
             self.Itineraries = []
             self.Legs = {}
             self.Agents = {}
-            self.Carriers = {} 
+            self.Carriers = {}
+            self.Places = {}
 
             try:
                 query = ret['Query']
@@ -170,40 +189,42 @@ class FlightQuery(Flights):
                 raise nt
             
             for leg in ret['Legs']:
-                self.Legs[leg['Id']] = FlightItinerary.FlightItineraryLeg(leg)
+                self.Legs[leg['Id']] = FlightItineraryLeg(leg)
             
             for agent in ret['Agents']:
-                self.Agents[agent['Id']] = FlightItinerary.FlightAgent(agent)
+                self.Agents[agent['Id']] = FlightAgent(agent)
             
             for carrier in ret['Carriers']:
-                self.Carriers[carrier['Id']] = FlightItinerary.FlightCarrier(carrier)
-            
+                self.Carriers[carrier['Id']] = FlightCarrier(carrier)
+
+            for place in ret['Places']:
+                self.Places[place['Id']] = FlightPlace(place)
+
             for itinerary in ret['Itineraries']:
-                self.Itineraries.append(FlightItinerary(itinerary))   
-        
+                self.Itineraries.append(FlightItinerary(itinerary))
+
         def get_itinerary_leg(self, leg_id):
             """
             :param leg_id - The itinerary leg ID            
             """            
             return self.Legs[leg_id]
         
-        def get_lowest_price(self, n_itinerary=1, n_agent=1):
+        def get_lowest_price(self, n_itinerary=10, filter=None):
             """
             :param n_itinerary - The number of lowest price itineraries
-            :param n_agent - The number of agents
             :return The first n-th lowest price itineraries
             """
             lowest = []
             for itinerary in self.Itineraries:
-                lowest.append(itinerary)
-                if len(lowest) > n_itinerary:
-                    lowest.sort(key=lambda x: x.get_lowest_price())
-                    del lowest[-1]
+                i_dict = self.to_dict(itinerary)
 
-            for l in lowest:
-                l.PricingOptions = l.PricingOptions[0:n_agent]
+                if filter is None or filter(i_dict):
+                    lowest.append(i_dict)
+                    if len(lowest) > n_itinerary:
+                        lowest.sort(key=lambda x: x['Price'])
+                        del lowest[-1]
 
-            return [self.to_dict(l) for l in lowest]
+            return lowest
 
         def to_dict(self, itinerary):
             """
@@ -215,6 +236,10 @@ class FlightQuery(Flights):
             inbound = dict(self.Legs[itinerary.InboundLegId].__dict__)
             outbound['Carriers'] = [self.Carriers[e].Name for e in outbound['Carriers']]
             inbound['Carriers'] = [self.Carriers[e].Name for e in inbound['Carriers']]
+            outbound['DestinationStation'] = self.Places[outbound['DestinationStation']].Name
+            outbound['OriginStation'] = self.Places[outbound['OriginStation']].Name
+            inbound['DestinationStation'] = self.Places[inbound['DestinationStation']].Name
+            inbound['OriginStation'] = self.Places[inbound['OriginStation']].Name
             ret['OutboundLeg'] = outbound
             ret['InboundLeg'] = inbound
             ret['Price'] = itinerary.get_lowest_price()
@@ -273,8 +298,9 @@ class FlightQuery(Flights):
                 outbounddate=outbounddate,
                 inbounddate=inbounddate,
                 adults=self.adults,
-                initial_delay=self.query_init_delay_sec,
-                delay=self.query_delay_sec).parsed
+                initial_delay=self.query_init_delay_sec, # Useless in current API
+                delay=self.query_delay_sec # Useless in current API
+                ).parsed
                    
         query_result = FlightQuery.FlightQueryResult(ret)    
             
@@ -284,9 +310,8 @@ class FlightQuery(Flights):
 class FlightCacheQuery(FlightsCache):
     class Types:
         CHEAPEST_QUOTES = 0,
-        CHEAPEST_PRICE_BY_ROUTE = 1,
-        CHEAPEST_PRICE_BY_DATE = 2,
-        GRID_PRICES_BY_DATE = 3
+        CHEAPEST_PRICE_BY_DATE = 1,
+        GRID_PRICES_BY_DATE = 2
 
     def __init__(self, config_path):
         """
@@ -311,7 +336,7 @@ class FlightCacheQuery(FlightsCache):
                                         currency=self.currency,
                                         locale=self.locale).parsed
 
-    def Query(self, dept_place, dest_place, outbounddate, inbounddate, type=Types.CHEAPEST_QUOTES):
+    def Query(self, dept_place, dest_place, outbounddate, inbounddate, type=Types.CHEAPEST_PRICE_BY_DATE):
         """
         Query all the flight prices based on human readable departure and
         destination places.
@@ -321,23 +346,7 @@ class FlightCacheQuery(FlightsCache):
         :param inbounddate - Inbound date
         :return All the itineraries
         """
-        if type == FlightCacheQuery.Types.GRID_PRICES_BY_DATE:
-            ret = self.get_grid_prices_by_date(market=self.market,
-                                               currency=self.currency,
-                                               locale=self.locale,
-                                               originplace=dept_place,
-                                               destinationplace=dest_place,
-                                               outbounddate=outbounddate,
-                                               inbounddate=inbounddate)
-        elif type == FlightCacheQuery.Types.CHEAPEST_PRICE_BY_DATE:
-            ret = self.get_cheapest_price_by_date(market=self.market,
-                                                  currency=self.currency,
-                                                  locale=self.locale,
-                                                  originplace=dept_place,
-                                                  destinationplace=dest_place,
-                                                  outbounddate=outbounddate,
-                                                  inbounddate=inbounddate)
-        elif type == FlightCacheQuery.Types.CHEAPEST_QUOTES:
+        if type == FlightCacheQuery.Types.CHEAPEST_QUOTES:
             ret = self.get_cheapest_quotes(market=self.market,
                                            currency=self.currency,
                                            locale=self.locale,
@@ -345,16 +354,36 @@ class FlightCacheQuery(FlightsCache):
                                            destinationplace=dest_place,
                                            outbounddate=outbounddate,
                                            inbounddate=inbounddate)
+        elif type == FlightCacheQuery.Types.CHEAPEST_PRICE_BY_DATE:
+            ret = self.get_cheapest_price_by_date(market=self.market,
+                                               currency=self.currency,
+                                               locale=self.locale,
+                                               originplace=dept_place,
+                                               destinationplace=dest_place,
+                                               outbounddate=outbounddate,
+                                               inbounddate=inbounddate)
+        elif type == FlightCacheQuery.Types.GRID_PRICES_BY_DATE:
+            ret = self.get_grid_prices_by_date(market=self.market,
+                                               currency=self.currency,
+                                               locale=self.locale,
+                                               originplace=dept_place,
+                                               destinationplace=dest_place,
+                                               outbounddate=outbounddate,
+                                               inbounddate=inbounddate)
         print(json.dumps(ret.parsed, indent=4))
 
-if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage: python query.py <config file name>")
-        sys.exit(1)
 
+def test_carrier_filter(itinerary):
+    out_carriers = itinerary['OutboundLeg']['Carriers']
+    in_carriers = itinerary['InboundLeg']['Carriers']
+
+    return all([c.find('China') == -1 for c in out_carriers]) and \
+        all([c.find('China') == -1 for c in in_carriers])
+
+
+def test_flight_query():
     config_file_path = sys.argv[1]
     flight = FlightQuery(config_file_path)
-    flightCache = FlightCacheQuery(config_file_path)
     start_date = datetime(2017, 1, 1)
     interval = 7
     lowest = []
@@ -365,22 +394,27 @@ if __name__ == '__main__':
     for i in range(0, total):
         start = start_date + timedelta(days=i)
         end = start_date + timedelta(days=i+interval)
-        result = flightCache.Query(dept_place=dept,
+        result = flight.Query(dept_place=dept,
                               dest_place=dest,
-                              outbounddate='2017-01',
-                              inbounddate='2017-02')
-                              # outbounddate=start.strftime("%Y-%m-%d"),
-                              # inbounddate=end.strftime("%Y-%m-%d"))
-        # lowest += result.get_lowest_price()
-        
+                              outbounddate=start.strftime("%Y-%m-%d"),
+                              inbounddate=end.strftime("%Y-%m-%d"))
+        lowest += result.get_lowest_price(filter=test_carrier_filter)
+
         if 1.0*i/total > prev_progress:
             print_log('[Default]',
                       'main',
                       "Progress {0:.0f}%".format(prev_progress))
             prev_progress += 0.1
 
-    # lowest.sort(key=lambda x: x['Price'])
-    #
-    # for l in lowest:
-    #     print("================================")
-    #  print(FlightQuery.FlightQueryResult.to_json(l))
+    lowest.sort(key=lambda x: x['Price'])
+
+    for l in lowest:
+        print("================================")
+        print(FlightQuery.FlightQueryResult.to_json(l))
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print("Usage: python query.py <config file name>")
+        sys.exit(1)
+    test_flight_query()
+
