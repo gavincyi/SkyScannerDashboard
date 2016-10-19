@@ -34,43 +34,43 @@ class config(configparser.ConfigParser):
         """
         API key getter 
         """            
-        return self['DEFAULT']['API_KEY']
+        return self.get('DEFAULT','API_KEY')
     
     def get_market(self):
         """
         Market getter 
-        """                        
-        return self['DEFAULT']['MARKET']
-        
+        """
+        return self.get('DEFAULT','MARKET')
+
     def get_currency(self):
         """
         Currency getter 
-        """               
-        return self['DEFAULT']['CURRENCY']
-        
+        """
+        return self.get('DEFAULT','CURRENCY')
+
     def get_locale(self):
         """
         Locale getter 
-        """                 
-        return self['DEFAULT']['LOCALE']   
-        
+        """
+        return self.get('DEFAULT','LOCALE')
+
     def get_adults(self):
         """
         Adults getter 
-        """                 
-        return int(self['DEFAULT']['ADULTS'])
-        
+        """
+        return self.get('DEFAULT','ADULTS')
+
     def get_query_init_delay_sec(self):
         """
         Query initial delay time in seconds
-        """                 
-        return int(self['DEFAULT']['QUERY_INIT_DELAY_SEC'])       
-        
+        """
+        return self.get('DEFAULT','QUERY_INIT_DELAY_SEC')
+
     def get_query_delay_sec(self):
         """
         Query delay time in seconds
-        """                 
-        return int(self['DEFAULT']['QUERY_DELAY_SEC'])
+        """
+        return self.get('DEFAULT','QUERY_DELAY_SEC')
 
 
 class FlightAgent:
