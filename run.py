@@ -4,11 +4,6 @@ from datetime import datetime, timedelta
 from query import FlightQuery, print_log
 from functools import partial
 
-app = Flask(__name__)
-webapp = Blueprint(__name__, __name__, static_folder='static')
-config_file_path = sys.argv[1]
-flight = FlightQuery(config_file_path)
-
 
 def carrier_filtering(itinerary, welcome_carriers, unwelcome_carriers):
     """
@@ -25,17 +20,36 @@ def carrier_filtering(itinerary, welcome_carriers, unwelcome_carriers):
         ret = False
         for carrier in welcome_carriers:
             ret |= any([c.find(carrier) > -1 for c in out_carriers]) or \
-                any([c.find(carrier) > -1 for c in in_carriers])
+                   any([c.find(carrier) > -1 for c in in_carriers])
 
         return ret
     elif len(unwelcome_carriers) > 0:
         ret = True
         for carrier in unwelcome_carriers:
             ret &= all([c.find(carrier) == -1 for c in out_carriers]) and \
-                 all([c.find(carrier) == -1 for c in in_carriers])
+                   all([c.find(carrier) == -1 for c in in_carriers])
         return ret
     else:
         return True
+
+##########################################################################################
+
+app = Flask(__name__)
+webapp = Blueprint(__name__, __name__, static_folder='static')
+enable_ssl = False
+
+if len(sys.argv) < 2 or len(sys.argv) > 3:
+    print("Usage: python run.py <config_file> (--ssl)")
+    sys.exit(0)
+elif len(sys.argv) == 3:
+    if sys.argv[2] == "--ssl":
+        enable_ssl = True
+    else:
+        print("Usage: python run.py <config_file> (--ssl)")
+        sys.exit(0)
+
+config_file_path = sys.argv[1]
+flight = FlightQuery(config_file_path)
 
 
 @webapp.route('/', methods=['GET', 'POST'])
@@ -47,6 +61,7 @@ def index():
     results = {}
     if request.method == "POST":
         try:
+            print_log("Webapp", "index", "Request = %s" % request.form)
             depts = [d.strip() for d in request.form['dept-city'].split(',')]
             dests = [d.strip() for d in request.form['dest-city'].split(',')]
             dept_date = request.form['dept-date']
@@ -78,9 +93,8 @@ def index():
                                                                               unwelcome_carriers=unwelcome_carriers))
             result.sort(key=lambda x: x['Price'])
 
-            print_log("Webapp", "index", request.form)                                      
-            print_log("Webapp", "index", date_diff)   
-            print_log("Webapp", "index", result)                                      
+            print_log("Webapp", "index", "Date diff = %d" % date_diff)
+            print_log("Webapp", "index", "Result = \n%s" % result)
             results = {'result': result, 'currency': flight.currency}
         except Exception as ex:
             print_log("Webapp", "index", request.form)
@@ -90,6 +104,9 @@ def index():
 
 def main():
     app.register_blueprint(webapp)
-    app.run(host=os.getenv('IP', '0.0.0.0'),port=int(os.getenv('PORT', 8080)))
-    
+    if enable_ssl:
+        app.run(host=os.getenv('IP', '0.0.0.0'),port=int(os.getenv('PORT', 8080)), ssl_context='adhoc')
+    else:
+        app.run(host=os.getenv('IP', '0.0.0.0'),port=int(os.getenv('PORT', 8080)))
+
 main()    

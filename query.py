@@ -64,13 +64,13 @@ class config(configparser.ConfigParser):
         """
         Query initial delay time in seconds
         """
-        return self.get('DEFAULT','QUERY_INIT_DELAY_SEC')
+        return int(self.get('DEFAULT','QUERY_INIT_DELAY_SEC'))
 
     def get_query_delay_sec(self):
         """
         Query delay time in seconds
         """
-        return self.get('DEFAULT','QUERY_DELAY_SEC')
+        return int(self.get('DEFAULT','QUERY_DELAY_SEC'))
 
 
 class FlightAgent:

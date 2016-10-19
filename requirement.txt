@@ -1,3 +1,4 @@
 skyscanner
 configparser
 flask
+pyopenssl
