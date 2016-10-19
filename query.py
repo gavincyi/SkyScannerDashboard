@@ -26,7 +26,10 @@ class config(configparser.ConfigParser):
                   "Configuration path = %s" % path)
         configparser.ConfigParser.__init__(self)
         self.read(path)
-    
+        print_log(self.__class__.__name__,
+                  self.__init__.__name__,
+                  "Configuration items:\n%s" % self.__dict__)
+
     def get_api_key(self):
         """
         API key getter 
