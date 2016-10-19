@@ -4,11 +4,13 @@ from datetime import datetime, timedelta
 import configparser
 import json
 
+
 def print_log(class_name, method_name, log_msg):
     print("%s - [%s::%s] - %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
                                   class_name,
                                   method_name, 
                                   log_msg))
+
 
 class config(configparser.ConfigParser):
     """
@@ -19,6 +21,9 @@ class config(configparser.ConfigParser):
         """
         :param path - Configuration file path
         """
+        print_log(self.__class__.__name__,
+                  self.__init__.__name__,
+                  "Configuration path = %s" % path)
         configparser.ConfigParser.__init__(self)
         self.read(path)
     
