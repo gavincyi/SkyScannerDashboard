@@ -34,45 +34,80 @@ class config(configparser.ConfigParser):
         """
         API key getter 
         """            
-        return self.get('DEFAULT','API_KEY')
+        return self.get('DEFAULT','API_KEY').strip()
     
     def get_market(self):
         """
         Market getter 
         """
-        return self.get('DEFAULT','MARKET')
+        return self.get('DEFAULT','MARKET').strip()
 
     def get_currency(self):
         """
         Currency getter 
         """
-        return self.get('DEFAULT','CURRENCY')
+        return self.get('DEFAULT','CURRENCY').strip()
 
     def get_locale(self):
         """
         Locale getter 
         """
-        return self.get('DEFAULT','LOCALE')
+        return self.get('DEFAULT','LOCALE').strip()
 
     def get_adults(self):
         """
         Adults getter 
         """
-        return self.get('DEFAULT','ADULTS')
+        return self.get('DEFAULT','ADULTS').strip()
 
     def get_query_init_delay_sec(self):
         """
         Query initial delay time in seconds
         """
-        return int(self.get('DEFAULT','QUERY_INIT_DELAY_SEC'))
+        return int(self.get('DEFAULT','QUERY_INIT_DELAY_SEC').strip())
 
     def get_query_delay_sec(self):
         """
         Query delay time in seconds
         """
-        return int(self.get('DEFAULT','QUERY_DELAY_SEC'))
-
-
+        return int(self.get('DEFAULT','QUERY_DELAY_SEC').strip())
+    
+    def get_search_days(self):
+        """
+        Total number of days to search
+        """
+        return int(self.get('DEFAULT', 'SEARCH_DAYS').strip())
+        
+    def get_travel_interval_days(self):
+        """
+        Travel interval days. First value is the lower range while the second
+        is the higher
+        """
+        interval = self.get('DEFAULT', 'TRAVEL_INTERVAL_DAYS').split('-')
+        interval = [int(e.strip()) for e in interval]
+        return interval[0:2]
+    
+    def get_departure_cities(self):
+        """
+        List of departure cities
+        """
+        cities = self.get('DEFAULT', 'DEPARTURE_CITIES').split(',')
+        return [e.strip() for e in cities]
+        
+    def get_destination_cities(self):
+        """
+        List of destination cities
+        """
+        cities = self.get('DEFAULT', 'DESTINATION_CITIES').split(',')
+        return [e.strip() for e in cities]
+        
+    def get_sqlite_file_path(self):
+        """
+        List of destination cities
+        """
+        return self.get('DEFAULT', 'SQLITE_FILE_PATH').strip()
+        
+        
 class FlightAgent:
     """
     Agent
@@ -217,7 +252,7 @@ class FlightQuery(Flights):
             """            
             return self.Legs[leg_id]
         
-        def get_lowest_price(self, n_itinerary=10, filter=None):
+        def get_lowest_price(self, n_itinerary=3, filter=None):
             """
             :param n_itinerary - The number of lowest price itineraries
             :return The first n-th lowest price itineraries
